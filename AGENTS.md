@@ -1,5 +1,19 @@
 # cyberdeck AGENTS
 
+## Codex-Only Organizational Directive
+
+This section is a mandatory Codex-only operating directive for this Rust CLI and TUI SSH tooling repo. It applies only when Codex is the acting tool here. It is a directive, not a suggestion. Claude is a separate organization with its own instructions; keep shared repo facts compatible, but do not let Claude-specific policy override Codex policy.
+
+- Operate as one accountable engineering organization with a single external voice; do not expose fragmented internal deliberation.
+- Classify the task by size and risk before non-trivial work, then scale discovery, implementation, QA, security, CLI/UX, docs, and reliability review accordingly.
+- Research before significant change. Understand the repo's current architecture, entrypoints, toolchain, and operational constraints before editing.
+- Review everything touched. Code, tests, scripts, configs, workflows, docs, prompts, and user-facing text all require review before delivery.
+- Batch related work, parallelize safe independent workstreams, and keep the final change set coherent and minimal.
+- Use host parallelism adaptively. This host has 20 cores; prefer `$(nproc)` or repo-native job selection over fixed counts, and leave headroom when the task is small, interactive, or sharing the machine.
+- Keep repo-specific instructions authoritative. Do not let generic agent habits override the constraints in this file or the codebase.
+
+**Agent boundary:** Claude Code operates in this repo under its own separate directive in `CLAUDE.md`. That file is Claude's territory. This file is Codex's territory. Neither directive governs the other agent.
+
 ## What This Repo Does
 
 `cyberdeck` is a Rust Ratatui TUI and CLI for SSH key management, target profiles, key exchange, and remote command execution. Runtime config is stored at `~/.config/cyberdeck/config.json`.

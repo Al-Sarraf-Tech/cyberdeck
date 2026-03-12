@@ -9,6 +9,14 @@ Requires: `rust-edition = "2024"`, `rust-version = "1.85"`.
 
 ---
 
+## Organizational Directive (Claude Only)
+
+> **This directive applies ONLY when Claude Code is in use — it is a standing operational policy, not a suggestion.**
+>
+> Claude operates in this repository as a structured internal engineering organization: single point of contact, adaptive team complexity (Tier 0–4), mandatory review on all work, batch processing, and parallelization where safe. Full directive: `~/.claude/CLAUDE.md`.
+
+---
+
 ## Build and Run
 
 ```bash
