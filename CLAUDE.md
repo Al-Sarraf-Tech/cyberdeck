@@ -120,7 +120,7 @@ This repository's CI/CD pipeline is **generated and managed by the Haskell CI Or
 
 **Directives:**
 - All CI/CD runs through the unified `ci.yml` pipeline (lint → test → security → sbom → docker → integration → release)
-- **Never release for macOS** — no macOS runners, no macOS release targets
+- **Never release for macOS or Windows** — linux-only releases, no macOS/Windows runners
 - **Never use the Gentoo runner** — all jobs target `[self-hosted, unified-all]`
 - **Never touch `haskell-money` or `haskell-ref`** — hard-denied by the orchestrator
 - Pipeline changes go through the orchestrator catalog (`CI.Catalog`), not direct YAML edits
