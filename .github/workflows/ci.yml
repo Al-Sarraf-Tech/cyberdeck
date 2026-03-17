@@ -21,8 +21,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RUSTUP_HOME: /home/runner/.rustup
   CARGO_HOME: /home/runner/.cargo
+  RUSTUP_TMPDIR: /tmp/rustup
 
 jobs:
   lint:
