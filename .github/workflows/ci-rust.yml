@@ -27,9 +27,23 @@ env:
   RUSTUP_TMPDIR: /tmp/rustup
 
 jobs:
+  repo-guard:
+    name: Repository Context Guard
+    runs-on: [self-hosted, unified-all]
+    timeout-minutes: 2
+    steps:
+      - name: Verify repository ownership
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          if [ "${{ github.repository }}" != "Al-Sarraf-Tech/cyberdeck" ]; then
+            echo "::error::SECURITY VIOLATION: Unauthorised repository."
+            exit 1
+          fi
+          echo "Repository context verified."
   lint:
     name: Lint
     runs-on: [self-hosted, unified-all]
+    needs: repo-guard
     timeout-minutes: 10
     steps:
       - name: Checkout
