@@ -299,6 +299,9 @@ fn build_profile(
     if host.is_empty() {
         return Err(anyhow!("host cannot be empty"));
     }
+    if port == 0 {
+        return Err(anyhow!("port must be between 1 and 65535"));
+    }
     let user = user.trim().to_string();
     if user.is_empty() {
         return Err(anyhow!("user cannot be empty"));

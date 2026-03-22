@@ -268,7 +268,10 @@ impl TargetForm {
             .port
             .trim()
             .parse::<u16>()
-            .map_err(|_| anyhow!("port must be a valid number"))?;
+            .map_err(|_| anyhow!("port must be a valid number (1-65535)"))?;
+        if port == 0 {
+            return Err(anyhow!("port must be a valid number (1-65535)"));
+        }
 
         let auth = match self.auth_kind {
             AuthFormKind::Password => {
@@ -823,7 +826,7 @@ impl App {
                 self.log("Add-target modal opened.");
             }
             KeyCode::Char('d') => {
-                if self.config.targets.is_empty() {
+                if self.selected_target >= self.config.targets.len() {
                     self.log("No target selected to delete.");
                     return;
                 }
@@ -1032,17 +1035,27 @@ impl App {
 pub fn run_tui() -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
 
-    let run_result = run_loop(&mut terminal);
+    let setup_and_run = || -> Result<()> {
+        execute!(stdout, EnterAlternateScreen)?;
+        let backend = CrosstermBackend::new(stdout);
+        let mut terminal = Terminal::new(backend)?;
 
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
+        let run_result = run_loop(&mut terminal);
 
-    run_result
+        // Best-effort cleanup of alternate screen and cursor
+        let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen);
+        let _ = terminal.show_cursor();
+
+        run_result
+    };
+
+    let result = setup_and_run();
+
+    // Always restore raw mode, even if setup or run failed
+    let _ = disable_raw_mode();
+
+    result
 }
 
 fn run_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
@@ -1934,21 +1947,24 @@ fn cyber_block(title: &str) -> Block<'_> {
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let py = percent_y.min(100);
+    let px = percent_x.min(100);
+
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage((100 - py) / 2),
+            Constraint::Percentage(py),
+            Constraint::Percentage((100 - py) / 2),
         ])
         .split(r);
 
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage((100 - px) / 2),
+            Constraint::Percentage(px),
+            Constraint::Percentage((100 - px) / 2),
         ])
         .split(popup_layout[1])[1]
 }

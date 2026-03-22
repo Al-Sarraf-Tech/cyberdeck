@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 
 use anyhow::{Context, Result};
 
@@ -21,6 +21,10 @@ impl SshConfigEntry {
     pub fn to_target_profile(&self) -> Option<TargetProfile> {
         let host = self.hostname.as_ref().or(Some(&self.alias))?;
         let user = self.user.as_ref()?;
+
+        if host.trim().is_empty() || user.trim().is_empty() {
+            return None;
+        }
 
         if host.contains('*') || host.contains('?') {
             return None;
@@ -62,7 +66,7 @@ pub fn parse_ssh_config() -> Result<Vec<SshConfigEntry>> {
 }
 
 /// Parse an SSH config file at an arbitrary path.
-pub fn parse_ssh_config_from_path(path: &PathBuf) -> Result<Vec<SshConfigEntry>> {
+pub fn parse_ssh_config_from_path(path: &Path) -> Result<Vec<SshConfigEntry>> {
     if !path.exists() {
         return Ok(Vec::new());
     }
@@ -86,9 +90,15 @@ fn parse_ssh_config_str(content: &str) -> Vec<SshConfigEntry> {
             continue;
         }
 
-        // Split into keyword and argument (SSH config supports both whitespace and '=' as delimiters)
+        // Split into keyword and argument (SSH config supports both whitespace and '=' as delimiters).
+        // Handle forms: "Key Value", "Key=Value", and "Key = Value".
         let (keyword, argument) = match trimmed.split_once(char::is_whitespace) {
-            Some((k, a)) => (k.trim(), a.trim()),
+            Some((k, a)) => {
+                let a = a.trim();
+                // Handle "Key = Value" form: strip leading '=' and re-trim
+                let a = a.strip_prefix('=').map_or(a, |rest| rest.trim_start());
+                (k.trim(), a)
+            }
             None => match trimmed.split_once('=') {
                 Some((k, a)) => (k.trim(), a.trim()),
                 None => continue,
