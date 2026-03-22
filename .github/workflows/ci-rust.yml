@@ -3,7 +3,9 @@ name: cyberdeck CI
 on:
   push:
     branches:
+    timeout-minutes: 60
       - main
+    timeout-minutes: 60
     tags:
       - v*.*.*
       - v*
