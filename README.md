@@ -21,7 +21,7 @@ A cyberpunk-themed terminal UI for SSH key management, key exchange, and remote 
 - **Target profiles** — store SSH connection profiles (host, port, user, auth method)
 - **Key exchange** — deploy a local public key to a remote host's `authorized_keys`
 - **Remote commands** — run commands on targets from the built-in SSH console
-- **SSH config import** — pull targets from `~/.ssh/config` automatically
+- **SSH config import** — pull targets from `~/.ssh/config` automatically; wildcard and empty-hostname entries are skipped safely
 - **Key health audit** — detect weak algorithms, old keys, and orphaned public keys
 - **Export** — print saved targets as ready-to-run `ssh` commands for scripting
 - **Host key verification** — checks `~/.ssh/known_hosts` to prevent MITM attacks
@@ -137,6 +137,9 @@ For SSH authentication, use exactly one of:
 - **No secrets on disk** — passwords and passphrases are stripped before the config file is written. They exist only in memory for the current session.
 - **Config permissions** — `~/.config/cyberdeck/config.json` is created with `0600` (owner-only) permissions; the directory with `0700`.
 - **Key name validation** — rejects path separators and null bytes to prevent path traversal.
+- **SSH config parsing hardening** — wildcard patterns (`*`, `?`) and entries with empty or missing hostnames are skipped during import to prevent invalid target profiles.
+- **Port validation** — port numbers are validated at parse time; out-of-range values are rejected before any connection attempt.
+- **TUI popup layout safety** — popup rendering guards against zero-height terminal windows to prevent panics on unusual terminal sizes.
 - **No unsafe code** — the crate uses `#![forbid(unsafe_code)]`.
 
 ---
