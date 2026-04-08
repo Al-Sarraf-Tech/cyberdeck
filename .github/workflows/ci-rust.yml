@@ -25,7 +25,7 @@ env:
 jobs:
   repo-guard:
     name: Repository Context Guard
-    runs-on: [self-hosted, unified-all]
+    runs-on: [self-hosted, rust-slim]
     timeout-minutes: 2
     steps:
       - name: Verify repository ownership
@@ -38,7 +38,7 @@ jobs:
           echo "Repository context verified."
   lint:
     name: Lint
-    runs-on: [self-hosted, unified-all]
+    runs-on: [self-hosted, rust-slim]
     needs: repo-guard
     timeout-minutes: 10
     steps:
@@ -54,7 +54,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
   test:
     name: Test
-    runs-on: [self-hosted, unified-all]
+    runs-on: [self-hosted, rust-slim]
     needs: lint
     timeout-minutes: 30
     steps:
@@ -87,7 +87,7 @@ jobs:
         run: cargo test --all-targets
   security:
     name: Security
-    runs-on: [self-hosted, unified-all]
+    runs-on: [self-hosted, rust-slim]
     needs: lint
     timeout-minutes: 30
     steps:
@@ -107,7 +107,7 @@ jobs:
         run: cargo deny check bans licenses sources
   release:
     name: Release
-    runs-on: [self-hosted, unified-all]
+    runs-on: [self-hosted, rust-slim]
     needs:
       - test
       - security
