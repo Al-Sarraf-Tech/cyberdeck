@@ -13,8 +13,6 @@ on:
     - cron: '0 4 * * 1'
 permissions:
   contents: write
-  id-token: write
-  attestations: write
   security-events: write
 concurrency:
   group: cyberdeck-ci-${{ github.ref }}
@@ -122,10 +120,6 @@ jobs:
         shell: bash
         timeout-minutes: 5
         run: cd release-assets && sha256sum * > SHA256SUMS
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: release-assets/*
       - name: Create GitHub Release
         uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe
         if: startsWith(github.ref, 'refs/tags/')

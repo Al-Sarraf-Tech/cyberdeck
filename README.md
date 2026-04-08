@@ -81,15 +81,19 @@ cyberdeck
 | Key | Action |
 |---|---|
 | `1`..`4` | Switch tabs (Keys, Targets, Exchange, Console) |
+| `Left` / `Right` | Switch tabs |
 | `q` | Quit |
-| Arrow keys | Navigate lists |
+| `Up` / `Down` | Navigate lists |
 | `r` | Refresh current view |
 | `F2` | Cycle theme |
 
-**Keys tab:** `g` generate key, `i` import private key
-**Targets tab:** `a` add target, `d` delete target, `t` test connection
+**Keys tab:** `g` generate key, `i` import private key, `h` run health audit
+
+**Targets tab:** `a` add target, `d` delete target, `t` test connection, `c` import from `~/.ssh/config`
+
 **Exchange tab:** `x` exchange key to target, `f` fetch remote keys
-**Console tab:** `e`/`Enter` edit command, `Enter` run, `Esc` leave edit, `c` clear
+
+**Console tab:** `e` or `Enter` enter input mode, `r` run command, `Esc` leave input mode, `c` clear output
 
 ### CLI commands
 
