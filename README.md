@@ -3,7 +3,7 @@
 [![CI](https://github.com/jalsarraf0/cyberdeck/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jalsarraf0/cyberdeck/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-> CI runs on self-hosted runners managed by [haskell-ci-orchestrator](https://github.com/jalsarraf0/haskell-ci-orchestrator) with build attestation.
+> CI runs on self-hosted runners managed by the [Haskell Orchestrator](https://github.com/Al-Sarraf-Tech/Haskell-Orchestrator).
 
 A cyberpunk-themed terminal UI for SSH key management, key exchange, and remote command execution. Built with Rust and [Ratatui](https://ratatui.rs).
 
@@ -40,8 +40,6 @@ Download the latest binary for your platform from the [Releases](https://github.
 |---|---|
 | Linux x86_64 | `cyberdeck-*-x86_64-unknown-linux-gnu.tar.gz` |
 | Linux ARM64 | `cyberdeck-*-aarch64-unknown-linux-gnu.tar.gz` |
-| macOS Intel | `cyberdeck-*-x86_64-apple-darwin.tar.gz` |
-| macOS Apple Silicon | `cyberdeck-*-aarch64-apple-darwin.tar.gz` |
 | Windows x86_64 | `cyberdeck-*-x86_64-pc-windows-msvc.zip` |
 
 Linux packages are also available: `.rpm`, `.deb`, and `.pkg.tar.zst` (Arch/Pacman).
@@ -164,7 +162,7 @@ Runs a Docker-backed SSH server, exercises all CLI flows, and cleans up automati
 
 ### Haskell CI orchestrator
 
-The `ci/orchestrator/` Haskell tool generates all GitHub Actions workflows and packaging specs. Use it instead of editing YAML by hand:
+The `ci/orchestrator/` Haskell tool (part of the [Haskell Orchestrator](https://github.com/Al-Sarraf-Tech/Haskell-Orchestrator)) generates all GitHub Actions workflows and packaging specs. Use it instead of editing YAML by hand:
 
 ```bash
 cabal run orchestrator -- ci        # run local CI gate
@@ -194,9 +192,9 @@ The release workflow automatically:
 
 1. Verifies the tag matches `Cargo.toml` version
 2. Runs the full CI gate + Docker regression
-3. Builds binaries for 5 targets (Linux x86_64/ARM64, macOS Intel/Silicon, Windows)
+3. Builds binaries for 3 targets (Linux x86_64/ARM64, Windows)
 4. Packages Linux binaries as RPM, DEB, and Pacman
-5. Publishes a GitHub Release with all assets and build provenance attestation
+5. Publishes a GitHub Release with all assets
 
 ---
 
@@ -217,6 +215,12 @@ ci/orchestrator/ Haskell CI/CD orchestrator
 packaging/       Generated RPM/DEB/Pacman specs
 scripts/         Regression and install helpers
 ```
+
+---
+
+## CI/CD & Orchestration
+
+This project is governed by the [Haskell Orchestrator](https://github.com/Al-Sarraf-Tech/Haskell-Orchestrator) — a Haskell-based multi-agent CI/CD governance framework for pre-push validation, code quality enforcement, and release management across the Al-Sarraf-Tech organization.
 
 ---
 
