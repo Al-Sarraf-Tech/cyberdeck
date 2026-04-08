@@ -6,8 +6,8 @@ rust-version = "1.85"
 description = "Cyberpunk SSH key management, exchange, and remote command TUI"
 readme = "README.md"
 license = "Apache-2.0"
-repository = "https://github.com/jalsarraf0/cyberdeck"
-homepage = "https://github.com/jalsarraf0/cyberdeck"
+repository = "https://github.com/Al-Sarraf-Tech/cyberdeck"
+homepage = "https://github.com/Al-Sarraf-Tech/cyberdeck"
 keywords = ["ssh", "tui", "terminal", "devops"]
 categories = ["command-line-interface", "network-programming"]
 

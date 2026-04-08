@@ -1,6 +1,6 @@
 # cyberdeck
 
-[![CI](https://github.com/jalsarraf0/cyberdeck/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jalsarraf0/cyberdeck/actions/workflows/ci.yml)
+[![CI](https://github.com/Al-Sarraf-Tech/cyberdeck/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Al-Sarraf-Tech/cyberdeck/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 > CI runs on self-hosted runners managed by the [Haskell Orchestrator](https://github.com/Al-Sarraf-Tech/Haskell-Orchestrator).
@@ -34,7 +34,7 @@ A cyberpunk-themed terminal UI for SSH key management, key exchange, and remote 
 
 ### Install from a release binary
 
-Download the latest binary for your platform from the [Releases](https://github.com/jalsarraf0/cyberdeck/releases/latest) page.
+Download the latest binary for your platform from the [Releases](https://github.com/Al-Sarraf-Tech/cyberdeck/releases/latest) page.
 
 | Platform | Asset |
 |---|---|
@@ -53,7 +53,7 @@ cargo install cyberdeck
 Or build from this repo:
 
 ```bash
-git clone https://github.com/jalsarraf0/cyberdeck.git
+git clone https://github.com/Al-Sarraf-Tech/cyberdeck.git
 cd cyberdeck
 cargo build --release
 ./target/release/cyberdeck
