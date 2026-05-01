@@ -1,8 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow};
+use tracing::{info, warn};
 
 use crate::models::LocalKey;
 
@@ -104,6 +106,7 @@ pub fn generate_ed25519_key(
     comment: &str,
     passphrase: Option<&str>,
 ) -> Result<LocalKey> {
+    let started = Instant::now();
     let trimmed_name = validate_key_name(name)?;
 
     let ssh_dir = ssh_dir()?;
@@ -119,6 +122,13 @@ pub fn generate_ed25519_key(
     }
 
     let pass = passphrase.unwrap_or("");
+    info!(
+        op = "key_generate",
+        algorithm = "ed25519",
+        name = %trimmed_name,
+        passphrase_set = !pass.is_empty(),
+        "generating key"
+    );
     let status = Command::new("ssh-keygen")
         .arg("-q")
         .arg("-t")
@@ -133,6 +143,13 @@ pub fn generate_ed25519_key(
         .context("failed to run ssh-keygen")?;
 
     if !status.success() {
+        warn!(
+            op = "key_generate",
+            algorithm = "ed25519",
+            name = %trimmed_name,
+            status = %status,
+            "ssh-keygen failed"
+        );
         return Err(anyhow!("ssh-keygen exited with status: {status}"));
     }
 
@@ -145,7 +162,7 @@ pub fn generate_ed25519_key(
     })?;
     let (algorithm, parsed_comment) = parse_pubkey_metadata(raw.trim());
 
-    Ok(LocalKey {
+    let key = LocalKey {
         name: trimmed_name,
         algorithm,
         comment: if comment.trim().is_empty() {
@@ -156,7 +173,18 @@ pub fn generate_ed25519_key(
         fingerprint: fingerprint_for_pubkey(&pub_path).unwrap_or_else(|_| "-".to_string()),
         public_key_path: pub_path.to_string_lossy().to_string(),
         private_key_path: Some(key_path.to_string_lossy().to_string()),
-    })
+    };
+
+    info!(
+        op = "key_generate",
+        outcome = "ok",
+        name = %key.name,
+        algorithm = %key.algorithm,
+        latency_ms = started.elapsed().as_millis() as u64,
+        "key generated"
+    );
+
+    Ok(key)
 }
 
 pub fn import_private_key(
@@ -164,10 +192,18 @@ pub fn import_private_key(
     private_key_path: &str,
     passphrase: Option<&str>,
 ) -> Result<LocalKey> {
+    let started = Instant::now();
     let private_key = expand_home_path(private_key_path)?;
     if !private_key.exists() {
         return Err(anyhow!("private key file does not exist"));
     }
+    info!(
+        op = "key_import",
+        phase = "start",
+        private_key = %private_key.display(),
+        passphrase_set = passphrase.is_some_and(|p| !p.is_empty()),
+        "importing private key"
+    );
 
     let mut read_pub = Command::new("ssh-keygen");
     read_pub.arg("-y").arg("-f").arg(&private_key);
@@ -180,6 +216,14 @@ pub fn import_private_key(
     let output = read_pub.output().context("failed reading private key")?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        // Common cause: passphrase mismatch. Surface as a diagnosable warn,
+        // but never log the passphrase or stderr (which can echo the key).
+        warn!(
+            op = "key_import",
+            outcome = "ssh_keygen_failed",
+            private_key = %private_key.display(),
+            "ssh-keygen rejected the private key (likely passphrase failure)"
+        );
         return Err(anyhow!(
             "ssh-keygen could not read private key: {}",
             stderr.trim()
@@ -219,14 +263,24 @@ pub fn import_private_key(
             .with_context(|| format!("failed writing public key: {}", pub_path.display()))?;
     }
 
-    Ok(LocalKey {
+    let key = LocalKey {
         name: key_name,
         algorithm,
         comment,
         fingerprint: fingerprint_for_pubkey(&pub_path).unwrap_or_else(|_| "-".to_string()),
         public_key_path: pub_path.to_string_lossy().to_string(),
         private_key_path: Some(private_key.to_string_lossy().to_string()),
-    })
+    };
+    info!(
+        op = "key_import",
+        phase = "done",
+        outcome = "ok",
+        name = %key.name,
+        algorithm = %key.algorithm,
+        latency_ms = started.elapsed().as_millis() as u64,
+        "private key imported"
+    );
+    Ok(key)
 }
 
 pub fn read_public_key(path: &Path) -> Result<String> {

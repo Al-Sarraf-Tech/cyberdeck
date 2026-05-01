@@ -1,10 +1,11 @@
 use std::io::Read;
 use std::net::TcpStream;
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow, bail};
 use ssh2::{CheckResult, KnownHostFileKind, Session};
+use tracing::{error, info, warn};
 
 use crate::keys::{expand_home_path, read_public_key};
 use crate::models::{AuthMethod, CommandResult, TargetProfile};
@@ -24,6 +25,13 @@ fn verify_host_key(session: &Session, host: &str, port: u16) -> Result<()> {
         .join(".ssh/known_hosts");
 
     if !known_hosts_path.exists() {
+        info!(
+            op = "host_key_verify",
+            outcome = "tofu_no_file",
+            host,
+            port,
+            "no known_hosts file — accepting under TOFU"
+        );
         return Ok(());
     }
 
@@ -36,24 +44,75 @@ fn verify_host_key(session: &Session, host: &str, port: u16) -> Result<()> {
         .ok_or_else(|| anyhow!("remote host did not provide a host key"))?;
 
     match known_hosts.check_port(host, port, key) {
-        CheckResult::Match => Ok(()),
-        CheckResult::Mismatch => bail!(
-            "HOST KEY VERIFICATION FAILED for {host}:{port}! \
-             The remote host key does not match the key in {}. \
-             This could indicate a man-in-the-middle attack. \
-             If you trust this host, remove the old entry from known_hosts and retry.",
-            known_hosts_path.display()
-        ),
+        CheckResult::Match => {
+            info!(
+                op = "host_key_verify",
+                outcome = "match",
+                host,
+                port,
+                "host key matches known_hosts"
+            );
+            Ok(())
+        }
+        CheckResult::Mismatch => {
+            error!(
+                op = "host_key_verify",
+                outcome = "mismatch",
+                host,
+                port,
+                known_hosts = %known_hosts_path.display(),
+                "HOST KEY MISMATCH — possible MITM"
+            );
+            bail!(
+                "HOST KEY VERIFICATION FAILED for {host}:{port}! \
+                 The remote host key does not match the key in {}. \
+                 This could indicate a man-in-the-middle attack. \
+                 If you trust this host, remove the old entry from known_hosts and retry.",
+                known_hosts_path.display()
+            )
+        }
         CheckResult::NotFound | CheckResult::Failure => {
             // Host not yet in known_hosts — proceed under TOFU policy
+            info!(
+                op = "host_key_verify",
+                outcome = "tofu_unknown",
+                host,
+                port,
+                "host not in known_hosts — accepting under TOFU"
+            );
             Ok(())
         }
     }
 }
 
 fn connect_session(profile: &TargetProfile) -> Result<Session> {
+    let started = Instant::now();
     let endpoint = profile.endpoint();
+    let auth_kind = match &profile.auth {
+        AuthMethod::Password { .. } => "password",
+        AuthMethod::KeyFile { .. } => "key_file",
+    };
+    info!(
+        op = "ssh_connect",
+        phase = "start",
+        host = %profile.host,
+        port = profile.port,
+        user = %profile.user,
+        auth = auth_kind,
+        "opening SSH session"
+    );
+
     let tcp = TcpStream::connect(&endpoint)
+        .inspect_err(|e| {
+            warn!(
+                op = "ssh_connect",
+                phase = "tcp",
+                host = %profile.host,
+                port = profile.port,
+                error = %e,
+                "TCP connect failed"
+            );
+        })
         .with_context(|| format!("failed connecting to {endpoint}"))?;
     tcp.set_read_timeout(Some(Duration::from_secs(15)))
         .with_context(|| format!("failed setting read timeout on {endpoint}"))?;
@@ -64,6 +123,16 @@ fn connect_session(profile: &TargetProfile) -> Result<Session> {
     session.set_tcp_stream(tcp);
     session
         .handshake()
+        .inspect_err(|e| {
+            warn!(
+                op = "ssh_connect",
+                phase = "handshake",
+                host = %profile.host,
+                port = profile.port,
+                error = %e,
+                "SSH handshake failed"
+            );
+        })
         .with_context(|| format!("failed SSH handshake with {}", profile.endpoint()))?;
 
     verify_host_key(&session, &profile.host, profile.port)?;
@@ -72,6 +141,18 @@ fn connect_session(profile: &TargetProfile) -> Result<Session> {
         AuthMethod::Password { password } => {
             session
                 .userauth_password(&profile.user, password)
+                .inspect_err(|e| {
+                    warn!(
+                        op = "ssh_connect",
+                        phase = "auth",
+                        auth = "password",
+                        host = %profile.host,
+                        port = profile.port,
+                        user = %profile.user,
+                        error = %e,
+                        "password auth failed"
+                    );
+                })
                 .with_context(|| format!("password auth failed for {}", profile.endpoint()))?;
         }
         AuthMethod::KeyFile {
@@ -87,6 +168,18 @@ fn connect_session(profile: &TargetProfile) -> Result<Session> {
                     Path::new(&expanded_private_key),
                     passphrase.as_deref(),
                 )
+                .inspect_err(|e| {
+                    warn!(
+                        op = "ssh_connect",
+                        phase = "auth",
+                        auth = "key_file",
+                        host = %profile.host,
+                        port = profile.port,
+                        user = %profile.user,
+                        error = %e,
+                        "key auth failed"
+                    );
+                })
                 .with_context(|| format!("key auth failed for {}", profile.endpoint()))?;
         }
     }
@@ -95,6 +188,17 @@ fn connect_session(profile: &TargetProfile) -> Result<Session> {
         bail!("authentication did not complete for {}", profile.endpoint());
     }
 
+    info!(
+        op = "ssh_connect",
+        phase = "done",
+        outcome = "ok",
+        host = %profile.host,
+        port = profile.port,
+        user = %profile.user,
+        auth = auth_kind,
+        latency_ms = started.elapsed().as_millis() as u64,
+        "SSH session ready"
+    );
     Ok(session)
 }
 
@@ -110,11 +214,15 @@ pub fn test_connection(profile: &TargetProfile) -> Result<()> {
 }
 
 pub fn run_remote_command(profile: &TargetProfile, command: &str) -> Result<CommandResult> {
+    let started = Instant::now();
     let session = connect_session(profile)?;
     let mut channel = session
         .channel_session()
         .with_context(|| format!("failed opening channel for {}", profile.endpoint()))?;
 
+    // Note: we deliberately do not log the command body — it can carry
+    // exchanged-in public keys or other context an operator may not want
+    // duplicated to log files.
     channel.exec(command).with_context(|| {
         format!(
             "failed executing remote command on {}: {}",
@@ -141,6 +249,20 @@ pub fn run_remote_command(profile: &TargetProfile, command: &str) -> Result<Comm
         .exit_status()
         .context("failed retrieving remote exit status")?;
 
+    info!(
+        op = "ssh_exec",
+        outcome = if exit_status == 0 { "ok" } else { "nonzero_exit" },
+        host = %profile.host,
+        port = profile.port,
+        user = %profile.user,
+        exit_status,
+        cmd_len = command.len(),
+        stdout_bytes = stdout.len(),
+        stderr_bytes = stderr.len(),
+        latency_ms = started.elapsed().as_millis() as u64,
+        "remote command finished"
+    );
+
     Ok(CommandResult {
         stdout,
         stderr,
@@ -149,11 +271,32 @@ pub fn run_remote_command(profile: &TargetProfile, command: &str) -> Result<Comm
 }
 
 pub fn exchange_public_key(profile: &TargetProfile, public_key_path: &Path) -> Result<()> {
+    let started = Instant::now();
+    info!(
+        op = "key_exchange",
+        phase = "start",
+        host = %profile.host,
+        port = profile.port,
+        user = %profile.user,
+        public_key = %public_key_path.display(),
+        "starting public key exchange"
+    );
     let key = read_public_key(public_key_path)?;
     let command = build_exchange_command(&key);
 
     let result = run_remote_command(profile, &command)?;
     if result.exit_status != 0 {
+        warn!(
+            op = "key_exchange",
+            phase = "done",
+            outcome = "failed",
+            host = %profile.host,
+            port = profile.port,
+            user = %profile.user,
+            exit_status = result.exit_status,
+            latency_ms = started.elapsed().as_millis() as u64,
+            "key exchange failed"
+        );
         return Err(anyhow!(
             "failed exchanging key on {} (exit={}): {}",
             profile.endpoint(),
@@ -162,6 +305,16 @@ pub fn exchange_public_key(profile: &TargetProfile, public_key_path: &Path) -> R
         ));
     }
 
+    info!(
+        op = "key_exchange",
+        phase = "done",
+        outcome = "ok",
+        host = %profile.host,
+        port = profile.port,
+        user = %profile.user,
+        latency_ms = started.elapsed().as_millis() as u64,
+        "public key installed in authorized_keys"
+    );
     Ok(())
 }
 

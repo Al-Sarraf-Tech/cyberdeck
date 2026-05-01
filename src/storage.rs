@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use tracing::{info, warn};
 
 use crate::models::{AppConfig, AuthMethod};
 
@@ -86,7 +87,15 @@ fn save_config_to_path(cfg: &AppConfig, path: &Path) -> Result<()> {
         .with_context(|| format!("failed creating config dir: {}", dir.display()))?;
 
     #[cfg(unix)]
-    set_dir_permissions(dir)?;
+    set_dir_permissions(dir).inspect_err(|e| {
+        warn!(
+            op = "config_save",
+            phase = "chmod_dir",
+            dir = %dir.display(),
+            error = %e,
+            "failed tightening config dir to 0700"
+        );
+    })?;
 
     let safe_cfg = sanitize_for_persistence(cfg);
     let raw = serde_json::to_string_pretty(&safe_cfg).context("failed serializing config")?;
@@ -95,7 +104,15 @@ fn save_config_to_path(cfg: &AppConfig, path: &Path) -> Result<()> {
         .with_context(|| format!("failed writing temp config file: {}", tmp_path.display()))?;
 
     #[cfg(unix)]
-    set_file_permissions(&tmp_path)?;
+    set_file_permissions(&tmp_path).inspect_err(|e| {
+        warn!(
+            op = "config_save",
+            phase = "chmod_tmp",
+            tmp = %tmp_path.display(),
+            error = %e,
+            "failed tightening temp config file to 0600"
+        );
+    })?;
 
     if let Err(err) = fs::rename(&tmp_path, path) {
         let _ = fs::remove_file(&tmp_path);
@@ -109,7 +126,23 @@ fn save_config_to_path(cfg: &AppConfig, path: &Path) -> Result<()> {
     }
 
     #[cfg(unix)]
-    set_file_permissions(path)?;
+    set_file_permissions(path).inspect_err(|e| {
+        warn!(
+            op = "config_save",
+            phase = "chmod_file",
+            path = %path.display(),
+            error = %e,
+            "failed tightening config file to 0600"
+        );
+    })?;
+
+    info!(
+        op = "config_save",
+        outcome = "ok",
+        path = %path.display(),
+        targets = safe_cfg.targets.len(),
+        "config persisted (credentials sanitized)"
+    );
 
     Ok(())
 }
