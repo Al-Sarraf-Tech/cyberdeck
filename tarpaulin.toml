@@ -1,0 +1,23 @@
+# Library coverage gate. Excludes:
+# - src/main.rs: thin CLI dispatch over the library; the build_profile and
+#   format_ssh_command pure helpers are tested directly via #[cfg(test)] mod
+#   tests, but the dispatch arms call into ssh_ops/storage which require live
+#   network or filesystem state.
+# - src/tui.rs: a Ratatui event loop driving the terminal. Exercised via the
+#   regression script (scripts/regression.sh) under a Docker-hosted target,
+#   not via cargo test, so tarpaulin sees it as ~0% covered and would drag
+#   the floor down to noise.
+# - src/ssh_ops.rs: every entry point opens a real TCP socket via libssh2 to
+#   a remote sshd. Tested by the regression script against a containerised
+#   sshd target; tarpaulin has no remote to talk to.
+#
+# Current measured floor (library subset): 40.3%. fail-under set to 35 to
+# allow flicker headroom. Ratchet target: 60%. Raise `fail-under` as coverage
+# improves; never lower it without an ADR.
+
+[default]
+exclude-files = ["src/main.rs", "src/tui.rs", "src/ssh_ops.rs"]
+fail-under = 35
+skip-clean = true
+out = ["Stdout", "Html"]
+output-dir = "target/tarpaulin"
