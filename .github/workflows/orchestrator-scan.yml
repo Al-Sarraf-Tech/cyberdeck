@@ -13,6 +13,6 @@ on:
 
 jobs:
   orchestrator:
-    uses: Al-Sarraf-Tech/Haskell-Orchestrator/.github/workflows/orchestrator-scan.yml@v4.0.0
+    uses: Al-Sarraf-Tech/Haskell-Orchestrator/.github/workflows/orchestrator-scan.yml@v4.0.2
     with:
       fail-on: error
