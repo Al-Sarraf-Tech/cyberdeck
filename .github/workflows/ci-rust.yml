@@ -109,7 +109,7 @@ jobs:
         run: cargo tarpaulin
       - name: Upload coverage HTML
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-html
           path: target/tarpaulin/
