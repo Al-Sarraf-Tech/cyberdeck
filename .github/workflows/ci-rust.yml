@@ -25,7 +25,7 @@ env:
 jobs:
   repo-guard:
     name: Repository Context Guard
-    runs-on: [self-hosted, dominus]
+    runs-on: [self-hosted, Linux, X64, ci-heavy]
     timeout-minutes: 2
     steps:
       - name: Verify repository ownership
@@ -38,7 +38,7 @@ jobs:
           echo "Repository context verified."
   lint:
     name: Lint
-    runs-on: [self-hosted, dominus]
+    runs-on: [self-hosted, Linux, X64, ci-heavy]
     needs: repo-guard
     timeout-minutes: 10
     steps:
@@ -54,7 +54,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
   test:
     name: Test
-    runs-on: [self-hosted, dominus]
+    runs-on: [self-hosted, Linux, X64, ci-heavy]
     needs: lint
     timeout-minutes: 30
     steps:
@@ -87,7 +87,7 @@ jobs:
         run: cargo test --all-targets
   coverage:
     name: Coverage
-    runs-on: [self-hosted, dominus]
+    runs-on: [self-hosted, Linux, X64, ci-heavy]
     needs: test
     timeout-minutes: 30
     steps:
@@ -116,7 +116,7 @@ jobs:
           retention-days: 14
   security:
     name: Security
-    runs-on: [self-hosted, dominus]
+    runs-on: [self-hosted, Linux, X64, ci-heavy]
     needs: lint
     timeout-minutes: 30
     steps:
@@ -136,7 +136,7 @@ jobs:
         run: cargo deny check bans licenses sources
   release:
     name: Release
-    runs-on: [self-hosted, dominus]
+    runs-on: [self-hosted, Linux, X64, ci-heavy]
     needs:
       - test
       - security
